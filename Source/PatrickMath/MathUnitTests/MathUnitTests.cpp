@@ -16,7 +16,7 @@ bool testAdd()
 	Vector4 result = vec0 + vec1;
 
 	Vector4::Container resultContainer;
-	result.write(resultContainer);
+	result.get(resultContainer);
 
 	return resultContainer.x == 2 &&
 		resultContainer.y == 3 &&
@@ -34,7 +34,7 @@ bool testSubtract()
 	Vector4 result = vec0 - vec1;
 
 	Vector4::Container resultContainer;
-	result.write(resultContainer);
+	result.get(resultContainer);
 
 	return resultContainer.x == 0 &&
 		resultContainer.y == 1 &&
@@ -50,7 +50,7 @@ bool testNegate()
 	Vector4 result = -vec;
 
 	Vector4::Container resultContainer;
-	result.write(resultContainer);
+	result.get(resultContainer);
 
 	return resultContainer.x == -1 &&
 		resultContainer.y == -2 &&
@@ -60,12 +60,64 @@ bool testNegate()
 
 bool testDot()
 {
-	return false;
+	Vector4::Container load = {1,2,3,4};
+	Vector4 test = Vector4(load);
+	__declspec(align(16)) float resultContainer[4];
+	
+	__m128 result = test*Vector4::ZERO;
+	_mm_store_ps(resultContainer, result);
+	if ( resultContainer[0] != 0 )
+	{
+		return false;
+	}
+	
+	result = test*Vector4::UNIT_X;
+	_mm_store_ps(resultContainer, result);
+	if ( resultContainer[0] != 1 )
+	{
+		return false;
+	}
+	
+	result = test*Vector4::UNIT_Y;
+	_mm_store_ps(resultContainer, result);
+	if ( resultContainer[0] != 2 )
+	{
+		return false;
+	}
+	
+	result = test*Vector4::UNIT_Z;
+	_mm_store_ps(resultContainer, result);
+	if ( resultContainer[0] != 3 )
+	{
+		return false;
+	}
+	
+	result = test*Vector4::UNIT_W;
+	_mm_store_ps(resultContainer, result);
+	if ( resultContainer[0] != 4 )
+	{
+		return false;
+	}
+
+	// this is fun
+	result = test * (Vector4::UNIT_X + Vector4::UNIT_Y + Vector4::UNIT_Z + Vector4::UNIT_W);
+	_mm_store_ps(resultContainer, result);
+	if ( resultContainer[0] != 10 )
+	{
+		return false;
+	}
+
+	return true;
 }
 
 bool testCross()
 {
-	return false;
+	// just basic test... I will need to be more thorough later
+	Vector4 result = Vector4::UNIT_X ^ Vector4::UNIT_Y;
+	Vector4::Container resultContainer;
+	result.get(resultContainer);
+	
+	return resultContainer.x == 0 && resultContainer.y == 0 && resultContainer.z == 1 && resultContainer.w == 0;
 }
 
 int _tmain(int argc, _TCHAR* argv[])
