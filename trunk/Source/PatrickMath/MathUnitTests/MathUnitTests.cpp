@@ -3,6 +3,7 @@
 
 #include "stdafx.h"
 #include "../PatrickMath/Vector4.h"
+#include "../PatrickMath/XmmFloat.h"
 
 #include <iostream>
 
