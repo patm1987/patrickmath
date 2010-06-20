@@ -121,6 +121,16 @@ bool testCross()
 	return resultContainer.x == 0 && resultContainer.y == 0 && resultContainer.z == 1 && resultContainer.w == 0;
 }
 
+bool testNormalize()
+{
+	return false;
+}
+
+bool testEquality()
+{
+	return false;
+}
+
 int _tmain(int argc, _TCHAR* argv[])
 {
 	std::cout << "Addition: " << testAdd() << std::endl;

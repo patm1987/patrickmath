@@ -51,6 +51,8 @@ public:
 	XmmBool(const __m128 &copy);
 	explicit XmmBool(bool copy);
 
+	bool getValue() const;
+
 	operator __m128() const;
 private:
 	__m128 m_value;
@@ -69,6 +71,14 @@ inline XmmBool::XmmBool(const XmmBool &copy)
 inline XmmBool::XmmBool(const __m128 &copy)
 {
 	m_value = copy;
+}
+
+inline bool XmmBool::getValue() const
+{
+	float destination;
+	_mm_store_ss(&destination, m_value);
+
+	return destination != 0.f;
 }
 
 /*!
