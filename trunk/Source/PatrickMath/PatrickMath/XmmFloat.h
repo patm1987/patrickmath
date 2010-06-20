@@ -100,7 +100,7 @@ public:
 	float &get(float &destination) const;
 	XmmFloat &set(float source);
 
-	operator __m128 ();
+	operator __m128 () const;
 
 	static const XmmFloat EPSILON;
 	static const XmmFloat EPSILON_SQ;
@@ -244,6 +244,7 @@ inline float &XmmFloat::get(float &destination) const
 inline XmmFloat &XmmFloat::set(float source)
 {
 	m_value = _mm_load1_ps(&source);
+	return *this;
 }
 
 /*!
@@ -254,7 +255,7 @@ inline XmmFloat &XmmFloat::set(float source)
 * extent)
 * \return the __m128 representing this object
 */
-XmmFloat::operator __m128 ()
+inline XmmFloat::operator __m128 () const
 {
 	return m_value;
 }

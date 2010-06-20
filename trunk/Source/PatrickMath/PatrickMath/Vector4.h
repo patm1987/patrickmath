@@ -37,7 +37,10 @@
 
 #pragma once
 
+#include <limits>
 #include <xmmintrin.h>
+
+#include "XmmFloat.h"
 
 __declspec(align(16))
 class Vector4
@@ -67,20 +70,26 @@ public:
 	// fast operations
 
 	// named
-	__m128 dotProduct(const Vector4 &rhs) const;
+	XmmFloat dotProduct(const Vector4 &rhs) const;
 	Vector4 add(const Vector4 &rhs) const;
 	Vector4 subtract(const Vector4 &rhs) const;
 	Vector4 negate() const;
 	Vector4 crossProduct(const Vector4 &rhs) const;
 	Vector4 normalize() const;
+	Vector4 safeNormalize(const XmmFloat &epsilon = XmmFloat::EPSILON) const;
+	Vector4 safeNormalizeSq(const XmmFloat &epsilonSq = XmmFloat::EPSILON_SQ) const;
+
+	XmmBool isEqual(const Vector4 &rhs) const;
+	XmmBool isEqual(const Vector4 &rhs, const XmmFloat &epsilon) const;
 
 	// operators
-	inline __m128 operator* (const Vector4 &rhs) const	{return dotProduct(rhs);}
+	inline XmmFloat operator* (const Vector4 &rhs) const{return dotProduct(rhs);}
 	inline Vector4 operator+ (const Vector4 &rhs) const	{return add(rhs);}
 	inline Vector4 operator- (const Vector4 &rhs) const	{return subtract(rhs);}
 	inline Vector4 operator- () const					{return negate();}
 	inline Vector4 operator^ (const Vector4 &rhs) const	{return crossProduct(rhs);}
 	inline Vector4 operator~ () const					{return normalize();}
+	inline XmmBool operator==(const Vector4 &rhs) const {return isEqual(rhs);}
 
 	// reads
 	Container &get(Container &destination) const;
@@ -90,11 +99,7 @@ public:
 
 	/*
 	* TODO:
-	*	equality operator (==)
-	*	equality with epsilon
-	*	safe normalize (epsilon for 0)
 	*	override new and delete for _aligned_malloc and free, everything must lie on 16 byte boundaries
-	*	create a FLOAT shell type (for dot product) holding an __m128 indicating a single float (either in the first index or all 4 indicies)
 	*/
 
 public:
@@ -168,7 +173,7 @@ inline Vector4 &Vector4::operator=(const Vector4::Container &copy)
 * \param rhs the right hand side of the dot product
 * \return a __m128 where every 32 bits is a float indicating the dot product
 */
-inline __m128 Vector4::dotProduct(const Vector4 &rhs) const
+inline XmmFloat Vector4::dotProduct(const Vector4 &rhs) const
 {
 	__m128 r0, r1;
 	r0 = _mm_mul_ps(elements, rhs.elements); // l0*r0, l1*r1, l2*r2, l3*r3; 0, 1, 2, 3
@@ -249,6 +254,73 @@ inline Vector4 Vector4::normalize() const
 	result.elements = _mm_div_ps(elements, length);
 
 	return result;
+}
+
+/*!
+* Normalizes a Vector4.  Will verify that that the Vector4 is larger than the provided epsilon and set the resulting
+* value to 0 if it is.  This does not garuntee skipping the normalization and if you're able to efficiently avoid
+* normalization via branching all together then I encourage you to do that instead and use normalize()
+* \param epsilon the epsilon value to use to check.  If not specified, this will use float epsilon.
+* \return the normalized vector or zero if the lenght of the vector is less than epsilon
+*/
+inline Vector4 Vector4::safeNormalize(const XmmFloat &epsilon) const
+{
+	Vector4 result;
+	XmmFloat length = _mm_sqrt_ps(dotProduct(*this));
+	XmmBool epsilonMask = length > epsilon;
+	result.elements = _mm_div_ps(elements, length);
+	result.elements = _mm_and_ps(result.elements, epsilonMask);
+	return result;
+}
+
+/*!
+* Similar to safeNormalize, it normalizes a vector with an epsilon check.  The provided epsilon is the squared value of
+* your chosen epsilon.  Currently this gains you nothing since my algorithm is to fully perform the normalization then
+* and the result with a bitmask created via a SSE comparison operation (to avoid branching and loading data off of the
+* xmm registers)
+* \param epsilonSq the chosen epsilon squared
+* \return the normalized vector or zero if the length squared is less than epsilon squared
+*/
+inline Vector4 Vector4::safeNormalizeSq(const XmmFloat &epsilonSq) const
+{
+	Vector4 result;
+	XmmFloat lengthSq = dotProduct(*this);
+	XmmBool epsilonMask = lengthSq > epsilonSq;
+	XmmFloat length = _mm_sqrt_ps(lengthSq);
+	result.elements = _mm_div_ps(elements, length);
+	result.elements = _mm_and_ps(result.elements, epsilonMask);
+	return result;
+}
+
+/*!
+* Generates a mask that's all high if equal or all low if not equal.
+* \param rhs the right hand side of the comparison
+* \return all raised if equal, all low otherwise
+*/
+inline XmmBool Vector4::isEqual(const Vector4 &rhs) const
+{
+	__m128 compare = _mm_cmpeq_ps(elements, rhs.elements); // a, b, c, d
+	__m128 cmpSwap = _mm_shuffle_ps(compare,compare,_MM_SHUFFLE(1,0,3,2)); // c, d, a, b
+	compare = _mm_and_ps(compare, cmpSwap); // a&c, b&d, a&c, b&d
+	cmpSwap = _mm_shuffle_ps(compare, compare, _MM_SHUFFLE(0,1,2,3)); // b&d, a&c, b&d, a&c
+	return XmmBool(_mm_and_ps(compare, cmpSwap)); // a&b&c&d, a&b&c&d, a&b&c&d, a&b&c&d
+}
+
+/*!
+* Generates a mask that's all high if equal within epsilon, or all low (outside of epsilon)
+* \param rhs the right hand side of the comparison
+* \param epsilon the epsilon for the comparison
+* \return all high if equal within epsilon, all bits low otherwise
+*/
+inline XmmBool Vector4::isEqual(const Vector4 &rhs, const XmmFloat &epsilon) const
+{
+	__m128 diff = _mm_sub_ps(elements, rhs.elements);
+	__m128 absDiff = _mm_max_ps(diff, _mm_sub_ps(_mm_setzero_ps(), diff)); // abs = max (x, 0-x))
+	__m128 compare = _mm_cmple_ps(diff, epsilon); // is diff <= epsilon? then raise bits::a, b, c, d
+	__m128 cmpSwap = _mm_shuffle_ps(compare,compare,_MM_SHUFFLE(1,0,3,2)); // c, d, a, b
+	compare = _mm_and_ps(compare, cmpSwap); // a&c, b&d, a&c, b&d
+	cmpSwap = _mm_shuffle_ps(compare, compare, _MM_SHUFFLE(0,1,2,3)); // b&d, a&c, b&d, a&c
+	return XmmBool(_mm_and_ps(compare, cmpSwap)); // a&b&c&d, a&b&c&d, a&b&c&d, a&b&c&d
 }
 
 /*!
