@@ -6,6 +6,8 @@
 #include "../PatrickMath/XmmFloat.h"
 
 #include <iostream>
+#include <limits>
+#include <stdint.h>
 
 bool testAdd()
 {
@@ -121,6 +123,36 @@ bool testCross()
 	return resultContainer.x == 0 && resultContainer.y == 0 && resultContainer.z == 1 && resultContainer.w == 0;
 }
 
+bool testSin()
+{
+	float maxDeviance = 0.f;
+	float averageDeviance = 0.f;
+
+	for ( int32_t i = 0; i < 1024; i++ )
+	{
+		float randValue = float(rand())/float(RAND_MAX);
+		randValue *= 3.14159265f - (3.14159265f/2.f);
+
+		float sinValue = sinf(randValue);
+		XmmFloat xmmValue (randValue);
+		XmmFloat xmmSin = xmmValue.sin();
+		float xmmResult;
+		xmmSin.get(xmmResult);
+
+		float deviance = fabs(xmmResult - sinValue);
+		if ( deviance > maxDeviance )
+		{
+			maxDeviance = deviance;
+		}
+		averageDeviance += deviance;
+		std::cout << "input: " << randValue << "; sin: " << sinValue << "; xmm sin: " << xmmResult << std::endl;
+	}
+
+	std::cout << "Sin test, average deviance:" << averageDeviance << "; max deviance:" << maxDeviance << std::endl;;
+
+	return true;
+}
+
 bool testNormalize()
 {
 	return false;
@@ -138,6 +170,7 @@ int _tmain(int argc, _TCHAR* argv[])
 	std::cout << "Negation: " << testNegate() << std::endl;
 	std::cout << "Dot Product: " << testDot() << std::endl;
 	std::cout << "Cross Product: " << testCross() << std::endl;
+	std::cout << "Test Sin: " << testSin() << std::endl;
 	return 0;
 }
 

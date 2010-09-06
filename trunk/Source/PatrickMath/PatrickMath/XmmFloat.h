@@ -192,6 +192,7 @@ inline XmmFloat XmmFloat::abs() const
 }
 
 /*!
+* Caution: values MUST be between -PI/2 and PI/2
 * Based off of www.devmaster.net/forums/showthread.php?t=5784
 */
 inline XmmFloat XmmFloat::cos() const
@@ -205,6 +206,7 @@ inline XmmFloat XmmFloat::cos() const
 }
 
 /*!
+* Caution: values MUST be between -PI/2 and PI/2
 * Based off of www.devmaster.net/forums/showthread.php?t=5784
 */
 inline XmmFloat XmmFloat::sin() const
@@ -283,6 +285,7 @@ inline XmmFloat XmmFloat::max(const XmmFloat &lhs, const XmmFloat &rhs)
 inline float &XmmFloat::get(float &destination) const
 {
 	_mm_store_ss(&destination, m_value);
+	return destination;
 }
 
 inline XmmFloat &XmmFloat::set(float source)
