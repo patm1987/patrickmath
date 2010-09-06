@@ -148,6 +148,8 @@ bool testSin()
 		std::cout << "input: " << randValue << "; sin: " << sinValue << "; xmm sin: " << xmmResult << std::endl;
 	}
 
+	averageDeviance /= 1024.f;
+
 	std::cout << "Sin test, average deviance:" << averageDeviance << "; max deviance:" << maxDeviance << std::endl;;
 
 	return true;
