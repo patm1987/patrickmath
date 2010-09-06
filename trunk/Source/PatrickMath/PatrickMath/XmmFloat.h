@@ -64,9 +64,9 @@ public:
 
 	// caution: these logical operations do not return a value usable in an if statement (do not return a bool)
 	inline XmmBool operator==(const XmmFloat &rhs) const	{return isEqual(rhs);}
-	inline XmmBool operator >(const XmmFloat &rhs) const	{return isGreaterThan(rhs);}
+	inline XmmBool operator> (const XmmFloat &rhs) const	{return isGreaterThan(rhs);}
 	inline XmmBool operator>=(const XmmFloat &rhs) const	{return isGreaterThanOrEqual(rhs);}
-	inline XmmBool operator <(const XmmFloat &rhs) const	{return isLessThan(rhs);}
+	inline XmmBool operator< (const XmmFloat &rhs) const	{return isLessThan(rhs);}
 	inline XmmBool operator<=(const XmmFloat &rhs) const	{return isLessThanOrEqual(rhs);}
 	inline XmmBool operator!=(const XmmFloat &rhs) const	{return isNotEqual(rhs);}
 	
@@ -80,6 +80,11 @@ public:
 	XmmFloat subtract(const XmmFloat &rhs) const;
 	XmmFloat divide(const XmmFloat &rhs) const;
 	XmmFloat multiply(const XmmFloat &rhs) const;
+	XmmFloat abs() const;
+
+	// trig functions
+	XmmFloat cos() const;
+	XmmFloat sin() const;
 
 	// logic operations
 	XmmBool isEqual(const XmmFloat &cmp) const;
@@ -104,6 +109,11 @@ public:
 
 	static const XmmFloat EPSILON;
 	static const XmmFloat EPSILON_SQ;
+
+	static const XmmFloat _PI;
+	static const XmmFloat _PI_2; // pi / 2
+	static const XmmFloat _2PI; // 2*pi
+	static const XmmFloat _FLOAT_ABS_MASK;
 
 private:
 	__m128 m_value;
@@ -174,6 +184,40 @@ inline XmmFloat XmmFloat::divide(const XmmFloat &rhs) const
 inline XmmFloat XmmFloat::multiply(const XmmFloat &rhs) const
 {
 	return _mm_div_ps(m_value, rhs.m_value);
+}
+
+inline XmmFloat XmmFloat::abs() const
+{
+	return _mm_and_ps(m_value, _FLOAT_ABS_MASK.m_value);
+}
+
+/*!
+* Based off of www.devmaster.net/forums/showthread.php?t=5784
+*/
+inline XmmFloat XmmFloat::cos() const
+{
+	__m128 result = m_value;
+	_mm_add_ps(result, _PI_2.m_value);
+	__m128 greaterThanPi = _mm_cmpgt_ps(result, _PI.m_value);
+	greaterThanPi = _mm_and_ps(greaterThanPi, _2PI.m_value);
+	_mm_sub_ps(result, greaterThanPi);
+	return XmmFloat(result).sin();
+}
+
+/*!
+* Based off of www.devmaster.net/forums/showthread.php?t=5784
+*/
+inline XmmFloat XmmFloat::sin() const
+{
+	const XmmFloat B = XmmFloat(4.f) / XmmFloat::_PI;
+	const XmmFloat C = XmmFloat(-4.f) / (XmmFloat::_PI * XmmFloat::_PI);
+	XmmFloat result = B * (*this) + C * (*this) * abs();
+
+	// this will net additional precision
+	const XmmFloat P (0.225f);
+	result = P * (result * result.abs() - result) + result;
+
+	return result;
 }
 
 inline XmmBool XmmFloat::isEqual(const XmmFloat &cmp) const
